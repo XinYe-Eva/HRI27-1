@@ -1,0 +1,372 @@
+---
+title: "Validating Experiments in HRI: Descriptive Results"
+subtitle: "Paper-level coding analysis"
+date: "2026-9-18"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+    df_print: kable
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+## Data
+
+Input: `HRI_Validation_Coding_Data_Paperlevel.csv` (paper-level clean coding
+data). One row per paper. For papers reporting more than one experiment,
+every Yes/No indicator was computed with an "at least one experiment/IV/DV =
+Yes" rule; see the `Data_Dictionary` tab of
+`HRI_Validation_Coding_Data_Paperlevel.xlsx` for the exact rule used for
+each column.
+
+This document uses base R plus `knitr::kable` for formatting only - no other
+packages are required.
+
+```{r load-data}
+df <- read.csv("HRI_Validation_Coding_Data_Paperlevel.csv", stringsAsFactors = FALSE)
+n_papers <- nrow(df)
+n_papers
+```
+
+## Sample and design descriptives
+
+```{r sample-descriptives}
+knitr::kable(as.data.frame(table(Technical_System_Paper = df$Technical_System_Paper)),
+             caption = "Technical_System_Paper distribution")
+
+cat("Total participants across all papers (Total_Sample_Size summed):",
+    sum(df$Total_Sample_Size, na.rm = TRUE), "\n")
+summary(df$Total_Sample_Size)
+```
+
+`Experiment_Setting`, `HRI_Type_Encountered`, `Sample_Type`, gender, age, and
+`WEIRD_Sample` are all external-validity/sample-composition indicators and
+are summarized together in the dedicated section below, not here.
+
+## Helper function
+
+```{r helper}
+summarize_binary <- function(df, col, dimension, label, denom_filter = NULL) {
+  x <- df[[col]]
+  if (!is.null(denom_filter)) {
+    x <- x[denom_filter]
+  }
+  n_applicable <- sum(x %in% c("Yes", "No"))
+  n_yes <- sum(x == "Yes")
+  pct <- if (n_applicable > 0) round(100 * n_yes / n_applicable, 1) else NA
+  data.frame(
+    Framework_Dimension = dimension,
+    Indicator = label,
+    N_Applicable = n_applicable,
+    N_Yes = n_yes,
+    Percent_Yes = pct,
+    stringsAsFactors = FALSE
+  )
+}
+
+has_subjective_dv <- df$Has_Subjective_DV == "Yes"
+```
+
+## Theoretical grounding
+
+```{r theoretical-grounding}
+tg <- rbind(
+  summarize_binary(df, "Has_Hypothesis", "Theoretical grounding", "Paper states a hypothesis"),
+  summarize_binary(df, "Theory_Driven_Hypothesis", "Theoretical grounding", "Hypothesis is theory-driven (of papers with a hypothesis)"),
+  summarize_binary(df, "HARKing_Risk", "Theoretical grounding", "HARKing risk flagged (of papers with a hypothesis)")
+)
+knitr::kable(tg, row.names = FALSE)
+```
+
+## Internal validity
+
+```{r internal-validity}
+iv <- summarize_binary(df, "Random_Assignment_or_Order_Control_Reported",
+                        "Internal validity",
+                        "Random assignment / order control reported")
+knitr::kable(iv, row.names = FALSE)
+```
+
+## Instrumentation validity
+
+Denominator restricted to the `r sum(has_subjective_dv)` papers that include
+at least one subjective (self-report) dependent variable.
+
+```{r instrumentation-validity}
+inst <- rbind(
+  summarize_binary(df, "Has_Subjective_DV", "Instrumentation validity", "Paper includes >=1 subjective DV"),
+  summarize_binary(df, "MultiItem_Measure_Used", "Instrumentation validity", "Multi-item measure used (of papers with a subjective DV)", has_subjective_dv),
+  summarize_binary(df, "Existing_Measure_Used", "Instrumentation validity", "Existing/adapted measure used (of papers with a subjective DV)", has_subjective_dv),
+  summarize_binary(df, "Reliability_Reported", "Instrumentation validity", "Reliability reported (of papers with a subjective DV)", has_subjective_dv),
+  summarize_binary(df, "Construct_Validity_Reported", "Instrumentation validity", "Construct validity reported (of papers with a subjective DV)", has_subjective_dv)
+)
+knitr::kable(inst, row.names = FALSE)
+```
+
+## Manipulation validity
+
+```{r manipulation-validity}
+mv <- summarize_binary(df, "Manipulation_Check_Reported", "Manipulation validity",
+                        "At least one manipulation check reported")
+knitr::kable(mv, row.names = FALSE)
+```
+
+## External validity: sample and study characteristics
+
+`Experiment_Setting`, `HRI_Type_Encountered`, and `Sample_Type` are summarized
+here **by paper** (each paper counted exactly once, in exactly one category),
+not with the "at least one experiment = Yes" rule used for the binary
+indicators above. A paper whose multiple experiments used different
+settings/types/populations is shown in its own explicit "Multiple" category,
+and unreported values get their own "Not reported" category, so that every
+column sums to its group's N. This matches the convention already used in
+the Results-section overview paragraph.
+
+```{r ev-helpers}
+is_tech <- df$Technical_System_Paper == "Yes"
+
+summarize_category <- function(x, cat_levels, is_tech) {
+  x <- factor(x, levels = cat_levels)
+  make_col <- function(idx) {
+    t <- table(x[idx])
+    n <- sum(idx)
+    sprintf("%d (%.1f%%)", as.integer(t), 100 * as.integer(t) / n)
+  }
+  data.frame(
+    Category = cat_levels,
+    All = make_col(rep(TRUE, nrow(df))),
+    Technical = make_col(is_tech),
+    NonTechnical = make_col(!is_tech),
+    stringsAsFactors = FALSE
+  )
+}
+```
+
+### Study setting
+
+```{r ev-setting}
+classify_setting <- function(x) {
+  x <- ifelse(is.na(x) | x == "", "Not reported", x)
+  ifelse(grepl("; ", x), "Multiple (differs across experiments)", x)
+}
+setting_levels <- c("Lab experiment", "Field experiment", "Online experiment",
+                     "Not reported", "Multiple (differs across experiments)")
+setting_tbl <- summarize_category(classify_setting(df$Experiment_Setting), setting_levels, is_tech)
+knitr::kable(setting_tbl, row.names = FALSE,
+             caption = paste0("Study setting, by paper (All n=", nrow(df),
+                               ", Technical n=", sum(is_tech),
+                               ", Non-technical n=", sum(!is_tech), ")"))
+```
+
+### HRI type encountered
+
+```{r ev-hritype}
+classify_hritype <- function(x) {
+  x <- ifelse(is.na(x) | x == "", "Other or information not provided", x)
+  ifelse(grepl("; ", x), "Multiple (differs across experiments)", x)
+}
+hritype_levels <- c("Actual Physical Robot Interaction (Real robot)",
+                     "Video/Description of Robot shown to participants",
+                     "Actual Virtual Robot Interaction (AR/VR)",
+                     "Other or information not provided",
+                     "Multiple (differs across experiments)")
+hritype_tbl <- summarize_category(classify_hritype(df$HRI_Type_Encountered), hritype_levels, is_tech)
+knitr::kable(hritype_tbl, row.names = FALSE, caption = "HRI type encountered, by paper")
+```
+
+
+
+### Gender composition
+
+```{r ev-gender}
+female <- suppressWarnings(as.numeric(df$Female_N))
+male   <- suppressWarnings(as.numeric(df$Male_N))
+other  <- suppressWarnings(as.numeric(df$Other_Gender_N)); other[is.na(other)] <- 0
+gender_total <- ifelse(is.na(female), 0, female) + ifelse(is.na(male), 0, male) + other
+gender_reported <- (!is.na(female) | !is.na(male)) & gender_total > 0
+pct_female <- ifelse(gender_reported, 100 * ifelse(is.na(female), 0, female) / gender_total, NA)
+pct_male   <- ifelse(gender_reported, 100 * ifelse(is.na(male), 0, male) / gender_total, NA)
+pct_other  <- ifelse(gender_reported, 100 * other / gender_total, NA)
+
+gender_summary <- function(idx) {
+  n <- sum(idx)
+  rep_n <- sum(gender_reported[idx], na.rm = TRUE)
+  data.frame(
+    N = n,
+    Gender_Reported = sprintf("%d (%.1f%%)", rep_n, 100 * rep_n / n),
+    Mean_Pct_Female = round(mean(pct_female[idx], na.rm = TRUE), 1),
+    Median_Pct_Female = round(median(pct_female[idx], na.rm = TRUE), 1),
+    Mean_Pct_Male = round(mean(pct_male[idx], na.rm = TRUE), 1),
+    Median_Pct_Male = round(median(pct_male[idx], na.rm = TRUE), 1),
+    Mean_Pct_Other = round(mean(pct_other[idx], na.rm = TRUE), 1),
+    Median_Pct_Other = round(median(pct_other[idx], na.rm = TRUE), 1)
+  )
+}
+gender_tbl <- rbind(
+  cbind(Group = "All", gender_summary(rep(TRUE, nrow(df)))),
+  cbind(Group = "Technical", gender_summary(is_tech)),
+  cbind(Group = "Non-technical", gender_summary(!is_tech))
+)
+knitr::kable(gender_tbl, row.names = FALSE,
+             caption = "Gender reporting, and mean/median % female, % male, and % other-gender among papers that reported a gender breakdown")
+```
+
+### Participant age
+
+```{r ev-age}
+mean_age <- suppressWarnings(as.numeric(df$Mean_Age))
+age_reported <- !is.na(mean_age)
+
+age_summary <- function(idx) {
+  n <- sum(idx)
+  rep_n <- sum(age_reported[idx])
+  vals <- mean_age[idx & age_reported]
+  data.frame(
+    N = n,
+    Age_Reported = sprintf("%d (%.1f%%)", rep_n, 100 * rep_n / n),
+    Mean = round(mean(vals), 1),
+    Median = round(median(vals), 1),
+    Min = round(min(vals), 1),
+    Max = round(max(vals), 1)
+  )
+}
+age_tbl <- rbind(
+  cbind(Group = "All", age_summary(rep(TRUE, nrow(df)))),
+  cbind(Group = "Technical", age_summary(is_tech)),
+  cbind(Group = "Non-technical", age_summary(!is_tech))
+)
+knitr::kable(age_tbl, row.names = FALSE,
+             caption = "Reported participant age (paper-level Mean_Age across the papers that reported it)")
+```
+
+### Generalizability limitation discussed
+
+Whether the paper discusses the sample limitation to generalizability. 
+`WEIRD_Limitation_Acknowledged` values of
+"Yes" and "Partially" are both treated as "Yes" here; "No" stays "No".
+
+```{r ev-weird}
+classify_limitation_discussed <- function(x) ifelse(x %in% c("Yes", "Partially"), "Yes", "No")
+limitation_flag <- classify_limitation_discussed(df$WEIRD_Limitation_Acknowledged)
+
+limitation_summary <- function(idx) {
+  n <- sum(idx)
+  x <- factor(limitation_flag[idx], levels = c("Yes", "No"))
+  t <- table(x)
+  data.frame(
+    N = n,
+    Yes = sprintf("%d (%.1f%%)", t["Yes"], 100 * t["Yes"] / n),
+    No = sprintf("%d (%.1f%%)", t["No"], 100 * t["No"] / n)
+  )
+}
+limitation_tbl <- rbind(
+  cbind(Group = "All", limitation_summary(rep(TRUE, nrow(df)))),
+  cbind(Group = "Technical", limitation_summary(is_tech)),
+  cbind(Group = "Non-technical", limitation_summary(!is_tech))
+)
+knitr::kable(limitation_tbl, row.names = FALSE,
+             caption = "Generalizability limitation discussed, out of all papers")
+```
+
+### Geography (participant country)
+
+
+```{r ev-geography}
+not_reported_tokens <- c("not reported", "na", "n/a", "nr", "no")
+classify_country <- function(x) {
+  x <- ifelse(is.na(x) | x == "", "Not reported", x)
+  ifelse(tolower(trimws(x)) %in% not_reported_tokens, "Not reported", "Reported")
+}
+country_levels <- c("Reported", "Not reported")
+country_tbl <- summarize_category(classify_country(df$Participant_Country), country_levels, is_tech)
+knitr::kable(country_tbl, row.names = FALSE,
+             caption = "Whether a specific participant country was explicitly reported, by paper")
+
+knitr::kable(as.data.frame(table(Participant_Country = df$Participant_Country)),
+             caption = "Participant_Country - raw values, for reference")
+```
+
+```{r ev-summary-export}
+external_validity_summary <- rbind(
+  cbind(Dimension = "Study setting", setting_tbl),
+  cbind(Dimension = "HRI type encountered", hritype_tbl),
+  cbind(Dimension = "Participant country reported", country_tbl)
+)
+write.csv(external_validity_summary, "results_summary_external_validity.csv", row.names = FALSE)
+```
+
+## Statistical conclusion validity
+
+```{r statistical-conclusion-validity}
+scv <- rbind(
+  summarize_binary(df, "Sample_Size_Justified", "Statistical conclusion validity", "Sample size justified (power analysis or other rationale)"),
+  summarize_binary(df, "Assumptions_Checked", "Statistical conclusion validity", "Statistical test assumptions checked/reported"),
+  summarize_binary(df, "Analysis_Issue_Identified", "Statistical conclusion validity", "An analysis issue was identified (e.g., uncorrected multiple comparisons)"),
+  summarize_binary(df, "Effect_Size_Reported", "Statistical conclusion validity", "Effect size reported")
+)
+knitr::kable(scv, row.names = FALSE)
+```
+
+## Research transparency
+
+```{r research-transparency}
+rt <- rbind(
+  summarize_binary(df, "Preregistration", "Research transparency", "Preregistration reported"),
+  summarize_binary(df, "IRB_Reported", "Research transparency", "IRB/ethics approval reported")
+)
+knitr::kable(rt, row.names = FALSE)
+```
+
+## Combined summary table
+
+```{r combined-summary}
+results_summary <- rbind(tg, iv, inst, mv, scv, rt)
+knitr::kable(results_summary, row.names = FALSE,
+             caption = "All framework-dimension indicators (Table for Results section)")
+write.csv(results_summary, "results_summary_by_dimension.csv", row.names = FALSE)
+```
+
+## Technical/Systems papers vs. other papers
+
+Papers are split by `Technical_System_Paper` (Yes = the paper proposed a new
+system/design/algorithm and the user study mainly evaluates it; No =
+User Studies papers).
+
+```{r tech-vs-nontech}
+is_tech <- df$Technical_System_Paper == "Yes"
+
+summarize_by_group <- function(df, group, col, dimension, label, denom_filter = NULL) {
+  base_filter <- if (is.null(denom_filter)) rep(TRUE, nrow(df)) else denom_filter
+  yes_group <- summarize_binary(df[group & base_filter, ], col, dimension, label)
+  no_group  <- summarize_binary(df[!group & base_filter, ], col, dimension, label)
+  data.frame(
+    Framework_Dimension = dimension,
+    Indicator = label,
+    Technical_N = yes_group$N_Applicable, Technical_Pct_Yes = yes_group$Percent_Yes,
+    NonTechnical_N = no_group$N_Applicable, NonTechnical_Pct_Yes = no_group$Percent_Yes,
+    stringsAsFactors = FALSE
+  )
+}
+
+has_subj_df <- df[has_subjective_dv, ]
+is_tech_subj <- is_tech[has_subjective_dv]
+
+comparison <- rbind(
+  summarize_by_group(df, is_tech, "Has_Hypothesis", "Theoretical grounding", "Paper states a hypothesis"),
+  summarize_by_group(df, is_tech, "Random_Assignment_or_Order_Control_Reported", "Internal validity", "Random assignment / order control reported"),
+  summarize_by_group(has_subj_df, is_tech_subj, "MultiItem_Measure_Used", "Instrumentation validity", "Multi-item measure used"),
+  summarize_by_group(has_subj_df, is_tech_subj, "Reliability_Reported", "Instrumentation validity", "Reliability reported"),
+  summarize_by_group(has_subj_df, is_tech_subj, "Construct_Validity_Reported", "Instrumentation validity", "Construct validity reported"),
+  summarize_by_group(df, is_tech, "Manipulation_Check_Reported", "Manipulation validity", "At least one manipulation check reported"),
+  summarize_by_group(df, is_tech, "Sample_Size_Justified", "Statistical conclusion validity", "Sample size justified"),
+  summarize_by_group(df, is_tech, "Effect_Size_Reported", "Statistical conclusion validity", "Effect size reported"),
+  summarize_by_group(df, is_tech, "Preregistration", "Research transparency", "Preregistration reported")
+)
+knitr::kable(comparison, row.names = FALSE,
+             caption = paste0("Technical/Systems papers (n = ", sum(is_tech),
+                               ") vs. other papers (n = ", sum(!is_tech), ")"))
+write.csv(comparison, "results_summary_technical_vs_nontechnical.csv", row.names = FALSE)
+```
