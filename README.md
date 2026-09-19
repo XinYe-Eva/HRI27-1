@@ -12,6 +12,6 @@ This repository contains the supplementary materials, data, and analysis code fo
 
 3. **Supplementary Materials**
    The supplementary document includes:
-   - additional details on the HRI Experiment Validation Framework and its seven dimensions;
+   - additional details on the HRI Experiment Validation Framework;
    - the complete codebook, including variable definitions and operational coding criteria; and
-   - additional details for papers summarized in the tables where further explanation was needed.
+   - additional information on papers whose study settings or robot interaction modalities were coded as involving multiple categories or as not reported
