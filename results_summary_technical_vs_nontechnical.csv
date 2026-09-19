@@ -1,0 +1,10 @@
+"Framework_Dimension","Indicator","Technical_N","Technical_Pct_Yes","NonTechnical_N","NonTechnical_Pct_Yes"
+"Theoretical grounding","Paper states a hypothesis",35,57.1,38,63.2
+"Internal validity","Random assignment / order control reported",35,82.9,38,84.2
+"Instrumentation validity","Multi-item measure used",32,71.9,33,75.8
+"Instrumentation validity","Reliability reported",32,21.9,33,24.2
+"Instrumentation validity","Construct validity reported",32,3.1,33,9.1
+"Manipulation validity","At least one manipulation check reported",35,17.1,38,39.5
+"Statistical conclusion validity","Sample size justified",35,31.4,38,36.8
+"Statistical conclusion validity","Effect size reported",35,60,38,73.7
+"Research transparency","Preregistration reported",35,5.7,38,15.8

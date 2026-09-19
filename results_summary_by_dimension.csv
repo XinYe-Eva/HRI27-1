@@ -1,0 +1,17 @@
+"Framework_Dimension","Indicator","N_Applicable","N_Yes","Percent_Yes"
+"Theoretical grounding","Paper states a hypothesis",73,44,60.3
+"Theoretical grounding","Hypothesis is theory-driven (of papers with a hypothesis)",44,31,70.5
+"Theoretical grounding","HARKing risk flagged (of papers with a hypothesis)",44,1,2.3
+"Internal validity","Random assignment / order control reported",73,61,83.6
+"Instrumentation validity","Paper includes >=1 subjective DV",73,65,89
+"Instrumentation validity","Multi-item measure used (of papers with a subjective DV)",65,48,73.8
+"Instrumentation validity","Existing/adapted measure used (of papers with a subjective DV)",65,50,76.9
+"Instrumentation validity","Reliability reported (of papers with a subjective DV)",65,15,23.1
+"Instrumentation validity","Construct validity reported (of papers with a subjective DV)",65,4,6.2
+"Manipulation validity","At least one manipulation check reported",73,21,28.8
+"Statistical conclusion validity","Sample size justified (power analysis or other rationale)",73,25,34.2
+"Statistical conclusion validity","Statistical test assumptions checked/reported",73,36,49.3
+"Statistical conclusion validity","An analysis issue was identified (e.g., uncorrected multiple comparisons)",73,15,20.5
+"Statistical conclusion validity","Effect size reported",73,49,67.1
+"Research transparency","Preregistration reported",73,8,11
+"Research transparency","IRB/ethics approval reported",73,60,82.2
